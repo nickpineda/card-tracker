@@ -1,326 +1,498 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { RotateCcw, Eye, EyeOff, Sparkles, Moon, Sun } from "lucide-react";
 
 const suits = [
-  { key: "spades", symbol: "♠", name: "Spades" },
-  { key: "hearts", symbol: "♥", name: "Hearts" },
+  { key: "spades",   symbol: "♠", name: "Spades"   },
+  { key: "hearts",   symbol: "♥", name: "Hearts"   },
   { key: "diamonds", symbol: "♦", name: "Diamonds" },
-  { key: "clubs", symbol: "♣", name: "Clubs" },
+  { key: "clubs",    symbol: "♣", name: "Clubs"    },
 ];
 
-const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 
 const allCards = suits.flatMap((suit) =>
   ranks.map((rank) => ({
-    id: `${rank}${suit.symbol}`,
+    id:         `${rank}${suit.symbol}`,
     rank,
-    suit: suit.symbol,
-    suitKey: suit.key,
-    suitName: suit.name,
-    valueLabel: ["J", "Q", "K", "10"].includes(rank) ? "10" : rank,
+    suit:       suit.symbol,
+    suitKey:    suit.key,
+    suitName:   suit.name,
+    valueLabel: ["J","Q","K","10"].includes(rank) ? "10" : rank,
   }))
 );
 
-const summaryValues = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+const summaryValues = ["A","2","3","4","5","6","7","8","9","10"];
+const STORAGE_KEY   = "card-tracker-used-cards-v2";
 
-const STORAGE_KEY = "card-tracker-used-cards-v2";
-const THEME_KEY = "card-tracker-theme-v1";
+const redSuits = new Set(["hearts","diamonds"]);
 
-const suitAccent = {
-  dark: {
-    spades: "text-zinc-100",
-    hearts: "text-rose-300",
-    diamonds: "text-rose-300",
-    clubs: "text-zinc-100",
-  },
-  light: {
-    spades: "text-slate-800",
-    hearts: "text-rose-600",
-    diamonds: "text-rose-600",
-    clubs: "text-slate-800",
-  },
-};
+/* ── tiny Win2000 title-bar component ───────────────────────── */
+function TitleBar({ title, icon = "🂠" }) {
+  return (
+    <div className="win-titlebar">
+      <span className="win-titlebar-icon">{icon}</span>
+      <span>{title}</span>
+      <div className="win-titlebar-buttons">
+        <button type="button" className="win-titlebar-btn" aria-label="Minimize">_</button>
+        <button type="button" className="win-titlebar-btn" aria-label="Maximize">□</button>
+        <button type="button" className="win-titlebar-btn" aria-label="Close" style={{ color: "#cc0000", fontWeight: "bold" }}>✕</button>
+      </div>
+    </div>
+  );
+}
 
+/* ── progress bar made of "chunks" like Win2000 ─────────────── */
+function ChunkyProgress({ value, max }) {
+  const pct      = value / max;
+  const trackW   = 100;          // we render proportionally via JS
+  const chunkW   = 10;           // px per chunk (approx)
+  const numFull  = Math.round(pct * 20); // 20 chunks max
+
+  return (
+    <div className="win-progress-track" style={{ width: "100%" }}>
+      {Array.from({ length: 20 }).map((_, i) => (
+        <div
+          key={i}
+          className="win-progress-chunk"
+          style={{ opacity: i < numFull ? 1 : 0 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ── main app ────────────────────────────────────────────────── */
 export default function CardTrackerWebApp() {
-  const [usedCards, setUsedCards] = useState(() => new Set());
+  const [usedCards,         setUsedCards]         = useState(() => new Set());
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
-  const [selectedSuit, setSelectedSuit] = useState("all");
-  const [theme, setTheme] = useState("dark");
+  const [selectedSuit,      setSelectedSuit]      = useState("all");
 
+  /* persist */
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setUsedCards(new Set(JSON.parse(raw)));
-      const savedTheme = localStorage.getItem(THEME_KEY);
-      if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
-    } catch (error) {
-      console.error("Failed to load deck state", error);
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([...usedCards]));
-    } catch (error) {
-      console.error("Failed to save deck state", error);
-    }
+    } catch {}
   }, [usedCards]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch (error) {
-      console.error("Failed to save theme", error);
-    }
-  }, [theme]);
-
-  const toggleCard = (cardId) => {
+  const toggleCard = (id) =>
     setUsedCards((prev) => {
       const next = new Set(prev);
-      if (next.has(cardId)) next.delete(cardId);
-      else next.add(cardId);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
 
   const resetDeck = () => setUsedCards(new Set());
 
-  const groupedCards = useMemo(() => {
-    return suits.map((suit) => ({
+  const groupedCards = useMemo(() =>
+    suits.map((suit) => ({
       ...suit,
-      cards: allCards.filter((card) => {
-        const suitMatch = selectedSuit === "all" || card.suitKey === selectedSuit;
-        const sameSuit = card.suitKey === suit.key;
-        const remainingMatch = !showOnlyRemaining || !usedCards.has(card.id);
+      cards: allCards.filter((c) => {
+        const suitMatch      = selectedSuit === "all" || c.suitKey === selectedSuit;
+        const sameSuit       = c.suitKey === suit.key;
+        const remainingMatch = !showOnlyRemaining || !usedCards.has(c.id);
         return suitMatch && sameSuit && remainingMatch;
       }),
-      used: allCards.filter((card) => card.suitKey === suit.key && usedCards.has(card.id)).length,
-      remaining: allCards.filter((card) => card.suitKey === suit.key && !usedCards.has(card.id)).length,
-    }));
-  }, [selectedSuit, showOnlyRemaining, usedCards]);
+      used:      allCards.filter((c) => c.suitKey === suit.key && usedCards.has(c.id)).length,
+      remaining: allCards.filter((c) => c.suitKey === suit.key && !usedCards.has(c.id)).length,
+    })),
+  [selectedSuit, showOnlyRemaining, usedCards]);
 
-  const usedCount = usedCards.size;
+  const usedCount      = usedCards.size;
   const remainingCount = 52 - usedCount;
-  const percentUsed = Math.round((usedCount / 52) * 100);
+  const percentUsed    = Math.round((usedCount / 52) * 100);
 
   const remainingValueSummary = summaryValues.map((value) => ({
     value,
-    remaining: allCards.filter(
-      (card) => card.valueLabel === value && !usedCards.has(card.id)
-    ).length,
+    remaining: allCards.filter((c) => c.valueLabel === value && !usedCards.has(c.id)).length,
   }));
 
-  const isDark = theme === "dark";
-  const palette = isDark
-    ? {
-        page: "bg-black text-white",
-        heroCard: "from-zinc-900 to-zinc-950 border-white/10",
-        sectionCard: "bg-zinc-950 border-white/10",
-        softPanel: "bg-white/5",
-        softButton: "bg-white/8 text-white hover:bg-white/15",
-        activeButton: "bg-white text-black hover:bg-white/90",
-        inactiveButton: "bg-white/8 text-white hover:bg-white/15",
-        progress: "bg-white",
-        primaryText: "text-white",
-        secondaryText: "text-zinc-200",
-        mutedText: "text-zinc-300",
-        subtleText: "text-zinc-400",
-        cardUsed: "border-white/5 bg-white/5 text-zinc-500 line-through",
-        cardUnused: "border-white/10 bg-zinc-900 text-white shadow-sm",
-        iconWrap: "bg-white/5",
-        badge: "bg-white/10 text-white hover:bg-white/10",
-        badgeMuted: "bg-white/5 text-zinc-300 hover:bg-white/5",
-      }
-    : {
-        page: "bg-gradient-to-b from-slate-50 to-white text-slate-900",
-        heroCard: "from-white to-slate-50 border-slate-200",
-        sectionCard: "bg-white border-slate-200",
-        softPanel: "bg-slate-100",
-        softButton: "bg-slate-100 text-slate-900 hover:bg-slate-200",
-        activeButton: "bg-slate-900 text-white hover:bg-slate-800",
-        inactiveButton: "bg-slate-100 text-slate-900 hover:bg-slate-200",
-        progress: "bg-slate-900",
-        primaryText: "text-slate-900",
-        secondaryText: "text-slate-700",
-        mutedText: "text-slate-600",
-        subtleText: "text-slate-500",
-        cardUsed: "border-slate-200 bg-slate-100 text-slate-400 line-through",
-        cardUnused: "border-slate-200 bg-white text-slate-900 shadow-sm",
-        iconWrap: "bg-slate-100",
-        badge: "bg-slate-900 text-white hover:bg-slate-900",
-        badgeMuted: "bg-slate-100 text-slate-700 hover:bg-slate-100",
-      };
+  const visibleGroups = groupedCards.filter(
+    (g) => selectedSuit === "all" || g.key === selectedSuit
+  );
 
+  /* ── render ─────────────────────────────────────────────── */
   return (
-    <div className={`min-h-screen ${palette.page}`}>
-      <div className="mx-auto max-w-md px-3 py-3 sm:px-4">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <div className={`overflow-hidden rounded-[28px] border bg-gradient-to-b shadow-2xl ${palette.heroCard}`}>
-            <div className="p-6 pb-2">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${palette.badge}`}>Live Deck</span>
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${palette.badgeMuted}`}>Auto-saved</span>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#008080",
+        backgroundImage: "repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px)",
+        padding: "12px",
+        fontFamily: "'Tahoma','MS Sans Serif',Arial,sans-serif",
+        fontSize: "11px",
+        color: "#000",
+      }}
+    >
+      {/* ═══ Main application window ═══════════════════════════ */}
+      <div
+        className="win-raised"
+        style={{
+          maxWidth: 500,
+          margin: "0 auto",
+          background: "#d4d0c8",
+          padding: "2px",
+        }}
+      >
+        <TitleBar title="Card Tracker — Live Deck" icon="🂠" />
+
+        {/* Menu bar */}
+        <div
+          style={{
+            background: "#d4d0c8",
+            borderBottom: "1px solid #808080",
+            padding: "1px 4px",
+            display: "flex",
+            gap: "8px",
+          }}
+        >
+          {["File","View","Deck","Help"].map((m) => (
+            <button
+              key={m}
+              type="button"
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "default",
+                fontSize: "11px",
+                padding: "1px 4px",
+                fontFamily: "'Tahoma',Arial,sans-serif",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#000080"; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#000"; }}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div
+          style={{
+            background: "#d4d0c8",
+            borderBottom: "2px solid",
+            borderColor: "#808080 #fff #fff #808080",
+            padding: "3px 4px",
+            display: "flex",
+            gap: "4px",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <button type="button" className="win-btn" onClick={resetDeck}>
+            ↺ New Deck
+          </button>
+          <button
+            type="button"
+            className={`win-btn${showOnlyRemaining ? " active" : ""}`}
+            onClick={() => setShowOnlyRemaining((v) => !v)}
+            style={showOnlyRemaining ? { borderColor: "#404040 #fff #fff #404040" } : {}}
+          >
+            {showOnlyRemaining ? "👁 Showing Remaining" : "🚫 Hide Used Cards"}
+          </button>
+        </div>
+
+        {/* Main content area */}
+        <div style={{ padding: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
+
+          {/* ── Stats groupbox ─────────────────────────────── */}
+          <div className="win-groupbox" style={{ marginTop: 0, padding: "8px 8px 6px" }}>
+            <span className="win-groupbox-label">Deck Statistics</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px", marginBottom: "6px" }}>
+              {[
+                { label: "Cards Used",    value: usedCount      },
+                { label: "Cards Left",    value: remainingCount },
+                { label: "% Used",        value: `${percentUsed}%` },
+              ].map(({ label, value }) => (
+                <div key={label} className="win-stat-cell">
+                  <div style={{ fontSize: "10px", color: "#444", marginBottom: "2px" }}>{label}</div>
+                  <div style={{ fontSize: "20px", fontWeight: "bold", color: "#000080", fontFamily: "'Tahoma',Arial,sans-serif" }}>
+                    {value}
                   </div>
-                  <h1 className={`text-3xl font-semibold tracking-tight ${palette.primaryText}`}>Card Tracker</h1>
-                  <p className={`mt-1 text-sm ${palette.mutedText}`}>Tap cards to mark them used. Tap again to restore them.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className={`rounded-[18px] h-10 w-10 border-0 ${palette.softButton}`}
-                    onClick={() => setTheme(isDark ? "light" : "dark")}
-                    aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
-                  >
-                    {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                  </button>
-                  <div className={`rounded-2xl p-3 ${palette.iconWrap}`}>
-                    <Sparkles className={`h-5 w-5 ${palette.secondaryText}`} />
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div className="space-y-4 p-6 pt-0">
-              <div className="grid grid-cols-3 gap-2">
-                <div className={`rounded-[22px] p-3 backdrop-blur ${palette.softPanel}`}>
-                  <div className={`text-[11px] uppercase tracking-[0.2em] ${palette.subtleText}`}>Used</div>
-                  <div className={`mt-1 text-3xl font-bold ${palette.primaryText}`}>{usedCount}</div>
-                </div>
-                <div className={`rounded-[22px] p-3 backdrop-blur ${palette.softPanel}`}>
-                  <div className={`text-[11px] uppercase tracking-[0.2em] ${palette.subtleText}`}>Left</div>
-                  <div className={`mt-1 text-3xl font-bold ${palette.primaryText}`}>{remainingCount}</div>
-                </div>
-                <div className={`rounded-[22px] p-3 backdrop-blur ${palette.softPanel}`}>
-                  <div className={`text-[11px] uppercase tracking-[0.2em] ${palette.subtleText}`}>Used %</div>
-                  <div className={`mt-1 text-3xl font-bold ${palette.primaryText}`}>{percentUsed}</div>
-                </div>
-              </div>
+            {/* Progress bar */}
+            <div style={{ marginBottom: "3px", fontSize: "10px" }}>Deck usage progress:</div>
+            <ChunkyProgress value={usedCount} max={52} />
+            <div style={{ fontSize: "10px", color: "#444", marginTop: "2px" }}>
+              {remainingCount} of 52 cards still in the deck
+            </div>
+          </div>
 
-              <div className="space-y-1.5">
-                <div className={`h-3 overflow-hidden rounded-full ${palette.softPanel}`}>
-                  <motion.div
-                    className={`h-full rounded-full ${palette.progress}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(usedCount / 52) * 100}%` }}
-                    transition={{ type: "spring", stiffness: 120, damping: 18 }}
-                  />
-                </div>
-                <div className={`text-xs ${palette.subtleText}`}>{remainingCount} cards still in the deck</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
+          {/* ── Filter tabs ────────────────────────────────── */}
+          <div>
+            <div style={{ display: "flex", gap: "0" }}>
+              {[{ key: "all", symbol: "All", name: "All Suits" }, ...suits].map((s) => (
                 <button
+                  key={s.key}
                   type="button"
-                  className={`rounded-[18px] h-10 px-3 border-0 ${palette.softButton}`}
-                  onClick={() => setShowOnlyRemaining((v) => !v)}
+                  className={`win-tab${selectedSuit === s.key ? " active-tab" : ""}`}
+                  onClick={() => setSelectedSuit(s.key)}
+                  style={
+                    selectedSuit === s.key
+                      ? { background: "#d4d0c8", borderColor: "#808080 #808080 transparent #fff" }
+                      : { background: "#c0bbad" }
+                  }
                 >
-                  {showOnlyRemaining ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
-                  {showOnlyRemaining ? "Showing remaining" : "Hide used cards"}
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-[18px] h-10 px-3 border-0 ${palette.softButton}`}
-                  onClick={resetDeck}
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  New deck
-                </button>
-              </div>
-
-              <div className="grid grid-cols-5 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setSelectedSuit("all")}
-                  className={`rounded-[18px] h-10 ${selectedSuit === "all" ? palette.activeButton : palette.inactiveButton}`}
-                >
-                  All
-                </button>
-                {suits.map((suit) => (
-                  <button
-                    type="button"
-                    key={suit.key}
-                    onClick={() => setSelectedSuit(suit.key)}
-                    className={`rounded-[18px] h-10 text-base ${selectedSuit === suit.key ? palette.activeButton : palette.inactiveButton}`}
+                  <span
+                    style={
+                      s.key !== "all" && redSuits.has(s.key)
+                        ? { color: "#cc0000" }
+                        : {}
+                    }
                   >
-                    {suit.symbol}
-                  </button>
-                ))}
-              </div>
-
-              <div className={`rounded-[22px] p-3 ${palette.softPanel}`}>
-                <div className={`mb-3 text-sm font-medium ${palette.secondaryText}`}>
-                  Remaining by value
-                </div>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {remainingValueSummary.map((item) => (
-                    <div
-                      key={item.value}
-                      className={`rounded-[18px] px-2.5 py-2 text-center ${isDark ? "bg-black/20" : "bg-white"}`}
-                    >
-                      <div className={`text-xs ${palette.subtleText}`}>{item.value}</div>
-                      <div className={`mt-0.5 text-base font-semibold ${palette.primaryText}`}>
-                        {item.remaining}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className={`mt-2 text-[11px] ${palette.subtleText}`}>
-                  10 includes 10, J, Q, and K.
-                </div>
+                    {s.symbol}
+                  </span>
+                  {s.key !== "all" && (
+                    <span style={{ marginLeft: 2 }}>{s.name}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="win-tab-content">
+              <div style={{ fontSize: "10px", color: "#444" }}>
+                {selectedSuit === "all"
+                  ? "Showing all 4 suits"
+                  : `Showing ${suits.find((s) => s.key === selectedSuit)?.name} only`}
               </div>
             </div>
           </div>
-        </motion.div>
 
-        <div className="mt-3 space-y-3">
-          {groupedCards
-            .filter((group) => selectedSuit === "all" || group.key === selectedSuit)
-            .map((group, index) => (
-              <motion.div
-                key={group.key}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.04 }}
-              >
-                <div className={`rounded-[24px] border shadow-xl ${palette.sectionCard}`}>
-                  <div className="p-3.5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`text-2xl ${suitAccent[theme][group.key]}`}>{group.symbol}</div>
-                        <div>
-                          <div className={`text-base font-semibold ${palette.primaryText}`}>{group.name}</div>
-                          <div className={`text-xs ${palette.subtleText}`}>{group.remaining} remaining · {group.used} used</div>
-                        </div>
-                      </div>
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${palette.badgeMuted}`}>13 total</span>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {group.cards.map((card) => {
-                        const isUsed = usedCards.has(card.id);
-                        return (
-                          <motion.button
-                            whileTap={{ scale: 0.96 }}
-                            key={card.id}
-                            onClick={() => toggleCard(card.id)}
-                            className={`rounded-[18px] border px-2 py-2.5 text-sm font-semibold transition ${isUsed ? palette.cardUsed : palette.cardUnused}`}
-                          >
-                            <span className={isUsed ? "" : suitAccent[theme][card.suitKey]}>
-                              {card.rank}{card.suit}
-                            </span>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
+          {/* ── Remaining by value groupbox ─────────────────── */}
+          <div className="win-groupbox" style={{ marginTop: 0, padding: "8px" }}>
+            <span className="win-groupbox-label">Remaining by Value</span>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, 1fr)",
+                gap: "3px",
+              }}
+            >
+              {remainingValueSummary.map((item) => (
+                <div key={item.value} className="win-stat-cell" style={{ padding: "3px 2px" }}>
+                  <div style={{ fontSize: "10px", color: "#444" }}>{item.value}</div>
+                  <div
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: "bold",
+                      color: item.remaining === 0 ? "#888" : "#000080",
+                    }}
+                  >
+                    {item.remaining}
                   </div>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
+            <div style={{ fontSize: "10px", color: "#666", marginTop: "4px" }}>
+              ℹ Value &quot;10&quot; includes 10, J, Q, and K.
+            </div>
+          </div>
+
+          {/* ── Card suit panels ────────────────────────────── */}
+          {visibleGroups.map((group) => (
+            <div
+              key={group.key}
+              className="win-groupbox"
+              style={{ marginTop: 0, padding: "6px" }}
+            >
+              <span className="win-groupbox-label">
+                <span
+                  style={
+                    redSuits.has(group.key)
+                      ? { color: "#cc0000", marginRight: 3 }
+                      : { marginRight: 3 }
+                  }
+                >
+                  {group.symbol}
+                </span>
+                {group.name}
+              </span>
+
+              {/* suit stats row */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  marginBottom: "5px",
+                  marginTop: "4px",
+                  fontSize: "10px",
+                  color: "#444",
+                  alignItems: "center",
+                }}
+              >
+                <span
+                  className="win-sunken"
+                  style={{ padding: "1px 6px", background: "#fff", fontSize: "10px" }}
+                >
+                  {group.remaining} remaining
+                </span>
+                <span
+                  className="win-sunken"
+                  style={{ padding: "1px 6px", background: "#fff", fontSize: "10px" }}
+                >
+                  {group.used} used
+                </span>
+                <span style={{ marginLeft: "auto" }}>13 total</span>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: "3px",
+                }}
+              >
+                {group.cards.map((card) => {
+                  const isUsed  = usedCards.has(card.id);
+                  const isRed   = redSuits.has(card.suitKey);
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      className={[
+                        "win-card-btn",
+                        isUsed ? "used" : "",
+                        !isUsed && isRed ? "red-suit" : "",
+                        isUsed && isRed ? "red-suit" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={() => toggleCard(card.id)}
+                    >
+                      {card.rank}
+                      <span style={{ fontSize: "12px" }}>{card.suit}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Status bar ──────────────────────────────────── */}
+        <div className="win-statusbar">
+          <div className="win-statusbar-pane">
+            {usedCount} card{usedCount !== 1 ? "s" : ""} used
+          </div>
+          <div className="win-statusbar-pane">
+            {remainingCount} remaining
+          </div>
+          <div className="win-statusbar-pane">
+            Auto-saved ✓
+          </div>
+          <div
+            style={{
+              width: 16,
+              height: 16,
+              background: "#d4d0c8",
+              border: "1px solid #808080",
+              marginLeft: "auto",
+              flexShrink: 0,
+            }}
+          />
         </div>
       </div>
+
+      {/* ── Taskbar ─────────────────────────────────────────── */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "#d4d0c8",
+          borderTop: "2px solid #fff",
+          height: "28px",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          padding: "0 4px",
+          zIndex: 1000,
+        }}
+      >
+        {/* Start button */}
+        <button
+          type="button"
+          style={{
+            background: "#d4d0c8",
+            border: "2px solid",
+            borderColor: "#fff #404040 #404040 #fff",
+            fontSize: "11px",
+            fontWeight: "bold",
+            fontFamily: "'Tahoma',Arial,sans-serif",
+            padding: "1px 8px",
+            cursor: "default",
+            height: "22px",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <span style={{ fontSize: "14px" }}>⊞</span> Start
+        </button>
+
+        {/* Separator */}
+        <div
+          style={{
+            width: "2px",
+            height: "20px",
+            borderLeft: "1px solid #808080",
+            borderRight: "1px solid #fff",
+            margin: "0 2px",
+          }}
+        />
+
+        {/* Active task */}
+        <button
+          type="button"
+          style={{
+            background: "#b8b4ac",
+            border: "2px solid",
+            borderColor: "#404040 #fff #fff #404040",
+            fontSize: "11px",
+            fontFamily: "'Tahoma',Arial,sans-serif",
+            padding: "1px 8px",
+            cursor: "default",
+            height: "22px",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          🂠 Card Tracker — Live Deck
+        </button>
+
+        {/* System tray */}
+        <div
+          style={{
+            marginLeft: "auto",
+            border: "1px solid",
+            borderColor: "#808080 #fff #fff #808080",
+            padding: "1px 6px",
+            fontSize: "10px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            height: "22px",
+          }}
+        >
+          <span>📶</span>
+          <span>🔊</span>
+          <span id="taskbar-clock">
+            {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
+      </div>
+
+      {/* Bottom padding so content clears taskbar */}
+      <div style={{ height: 36 }} />
     </div>
   );
 }

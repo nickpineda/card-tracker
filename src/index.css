@@ -1,1 +1,345 @@
 @import "tailwindcss";
+
+/* ============================================================
+   Windows 2000 / Classic Microsoft Design System
+   ============================================================ */
+
+:root {
+  /* Color tokens */
+  --win-desktop:        #008080;        /* Classic teal desktop */
+  --win-silver:         #d4d0c8;        /* Window / button face */
+  --win-silver-light:   #ffffff;        /* Highlight edge */
+  --win-silver-dark:    #808080;        /* Shadow edge */
+  --win-silver-darker:  #404040;        /* Deep shadow */
+  --win-titlebar-start: #000080;        /* Classic navy blue titlebar */
+  --win-titlebar-end:   #1084d0;        /* Titlebar gradient end */
+  --win-titlebar-text:  #ffffff;
+  --win-text:           #000000;
+  --win-text-muted:     #444444;
+  --win-inset-bg:       #ffffff;
+  --win-red:            #cc0000;
+  --win-red-suit:       #cc0000;
+  --win-used-bg:        #d4d0c8;
+  --win-used-text:      #888888;
+  --win-progress-fill:  #000080;
+  --win-progress-bg:    #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Tahoma', 'MS Sans Serif', Arial, sans-serif;
+  font-size: 11px;
+  background-color: var(--win-desktop);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+  color: var(--win-text);
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================================
+   Classic raised / sunken border utilities
+   ============================================================ */
+
+/* Raised = bright top-left, dark bottom-right */
+.win-raised {
+  border: 2px solid;
+  border-color: var(--win-silver-light) var(--win-silver-darker) var(--win-silver-darker) var(--win-silver-light);
+}
+
+/* Sunken = dark top-left, bright bottom-right */
+.win-sunken {
+  border: 2px solid;
+  border-color: var(--win-silver-darker) var(--win-silver-light) var(--win-silver-light) var(--win-silver-darker);
+}
+
+/* Flat etched border (groupbox style) */
+.win-etched {
+  border: 2px solid;
+  border-color: var(--win-silver-dark) var(--win-silver-light) var(--win-silver-light) var(--win-silver-dark);
+}
+
+/* ============================================================
+   Window chrome
+   ============================================================ */
+
+.win-window {
+  background: var(--win-silver);
+  padding: 2px;
+}
+
+.win-titlebar {
+  background: linear-gradient(to right, var(--win-titlebar-start), var(--win-titlebar-end));
+  color: var(--win-titlebar-text);
+  font-weight: bold;
+  font-size: 11px;
+  padding: 3px 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.win-titlebar-icon {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.win-titlebar-buttons {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+
+.win-titlebar-btn {
+  width: 16px;
+  height: 14px;
+  background: var(--win-silver);
+  color: var(--win-text);
+  font-size: 9px;
+  font-weight: bold;
+  font-family: 'Marlett', 'Tahoma', Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  border: 1.5px solid;
+  border-color: var(--win-silver-light) var(--win-silver-darker) var(--win-silver-darker) var(--win-silver-light);
+  line-height: 1;
+  padding: 0;
+}
+
+.win-titlebar-btn:active {
+  border-color: var(--win-silver-darker) var(--win-silver-light) var(--win-silver-light) var(--win-silver-darker);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+.win-btn {
+  background: var(--win-silver);
+  color: var(--win-text);
+  font-family: 'Tahoma', Arial, sans-serif;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  border: 2px solid;
+  border-color: var(--win-silver-light) var(--win-silver-darker) var(--win-silver-darker) var(--win-silver-light);
+  min-height: 23px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.win-btn:hover {
+  background: var(--win-silver);
+}
+
+.win-btn:active,
+.win-btn.active {
+  border-color: var(--win-silver-darker) var(--win-silver-light) var(--win-silver-light) var(--win-silver-darker);
+  padding: 4px 9px 2px 11px;
+}
+
+.win-btn-primary {
+  font-weight: bold;
+  min-width: 75px;
+  justify-content: center;
+}
+
+/* ============================================================
+   Panels & groupboxes
+   ============================================================ */
+
+.win-panel {
+  background: var(--win-silver);
+  padding: 8px;
+}
+
+.win-groupbox {
+  border: 2px solid;
+  border-color: var(--win-silver-dark) var(--win-silver-light) var(--win-silver-light) var(--win-silver-dark);
+  padding: 8px;
+  padding-top: 4px;
+  margin-top: 10px;
+  position: relative;
+  background: var(--win-silver);
+}
+
+.win-groupbox-label {
+  position: absolute;
+  top: -9px;
+  left: 8px;
+  background: var(--win-silver);
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* ============================================================
+   Progress bar
+   ============================================================ */
+
+.win-progress-track {
+  background: var(--win-progress-bg);
+  border: 2px solid;
+  border-color: var(--win-silver-darker) var(--win-silver-light) var(--win-silver-light) var(--win-silver-darker);
+  height: 18px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+}
+
+.win-progress-chunk {
+  width: 8px;
+  height: 100%;
+  background: var(--win-titlebar-start);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Card buttons
+   ============================================================ */
+
+.win-card-btn {
+  background: var(--win-silver);
+  color: var(--win-text);
+  font-family: 'Tahoma', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 2px;
+  cursor: pointer;
+  text-align: center;
+  border: 2px solid;
+  border-color: var(--win-silver-light) var(--win-silver-darker) var(--win-silver-darker) var(--win-silver-light);
+  min-height: 32px;
+  transition: none;
+  line-height: 1.2;
+}
+
+.win-card-btn:hover {
+  background: #e8e4dc;
+}
+
+.win-card-btn:active {
+  border-color: var(--win-silver-darker) var(--win-silver-light) var(--win-silver-light) var(--win-silver-darker);
+}
+
+.win-card-btn.used {
+  background: var(--win-used-bg);
+  color: var(--win-used-text);
+  border-color: var(--win-silver-dark) var(--win-silver-light) var(--win-silver-light) var(--win-silver-dark);
+  text-decoration: line-through;
+}
+
+.win-card-btn.red-suit {
+  color: var(--win-red-suit);
+}
+
+.win-card-btn.used.red-suit {
+  color: #cc9999;
+}
+
+/* ============================================================
+   Stat cells
+   ============================================================ */
+
+.win-stat-cell {
+  background: var(--win-inset-bg);
+  border: 2px solid;
+  border-color: var(--win-silver-darker) var(--win-silver-light) var(--win-silver-light) var(--win-silver-darker);
+  padding: 4px 6px;
+  text-align: center;
+}
+
+/* ============================================================
+   Status bar
+   ============================================================ */
+
+.win-statusbar {
+  background: var(--win-silver);
+  border-top: 1px solid var(--win-silver-dark);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 2px;
+}
+
+.win-statusbar-pane {
+  border: 1px solid;
+  border-color: var(--win-silver-dark) var(--win-silver-light) var(--win-silver-light) var(--win-silver-dark);
+  padding: 1px 6px;
+  font-size: 10px;
+  flex: 1;
+}
+
+/* ============================================================
+   Suit filter tabs
+   ============================================================ */
+
+.win-tab {
+  background: var(--win-silver);
+  font-family: 'Tahoma', Arial, sans-serif;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  border: 2px solid;
+  border-bottom: none;
+  border-color: var(--win-silver-light) var(--win-silver-darker) transparent var(--win-silver-light);
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  top: 2px;
+}
+
+.win-tab.active-tab {
+  background: var(--win-silver);
+  z-index: 2;
+  padding-bottom: 5px;
+}
+
+.win-tab-content {
+  border: 2px solid;
+  border-color: var(--win-silver-dark) var(--win-silver-light) var(--win-silver-light) var(--win-silver-dark);
+  background: var(--win-silver);
+  padding: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================================
+   Scrollbar (optional cosmetic)
+   ============================================================ */
+
+::-webkit-scrollbar { width: 16px; }
+::-webkit-scrollbar-track { background: var(--win-silver); }
+::-webkit-scrollbar-thumb {
+  background: var(--win-silver);
+  border: 2px solid;
+  border-color: var(--win-silver-light) var(--win-silver-darker) var(--win-silver-darker) var(--win-silver-light);
+}
+::-webkit-scrollbar-button {
+  background: var(--win-silver);
+  border: 2px solid;
+  border-color: var(--win-silver-light) var(--win-silver-darker) var(--win-silver-darker) var(--win-silver-light);
+  height: 16px;
+}
